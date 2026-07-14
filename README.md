@@ -1,44 +1,68 @@
 # Chrome Clean
 
-Chrome Clean is a batch script designed to remove Google Chrome-related policies from Windows registry. This tool is particularly useful for troubleshooting or restoring default settings when Chrome policies are being enforced, often due to organizational configurations or malware.
+Chrome Clean is a small, auditable Windows utility for removing Google Chrome and Chromium policies from the registry. It can help diagnose a personal computer where `chrome://policy` shows unwanted policies left behind by old management software, unwanted extensions, or malware remediation.
 
-## Features
-- Deletes machine-wide and user-specific Chrome policies.
-- Lists all Chrome-related registry keys before removal for verification.
-- Ensures all Google Chrome-related policies are fully removed to allow a fresh start.
+## Safety first
 
-## Prerequisites
-- **Windows Administrator Privileges**: The script must be run as an administrator to successfully access and delete registry keys.
-- **Windows OS**: This script is intended for Windows systems that have Google Chrome installed.
+Chrome Clean changes the Windows registry. Version 1.0 previews every targeted key, requires the user to type `REMOVE`, and exports each existing key before deleting it.
+
+Do not use Chrome Clean to bypass controls on a computer managed by an employer, school, or another organization. Authorized management software can restore policies after they are removed. Contact the responsible administrator when the device is legitimately managed.
+
+Chrome Clean does not delete:
+
+- Windows Group Policy directories
+- Chrome profiles, bookmarks, history, passwords, or other user data
+- General Google or Chrome application registry data
+- Chrome itself
+
+## Requirements
+
+- Windows 10 or Windows 11
+- Administrator access
+- Google Chrome or Chromium, if you want to inspect the result
 
 ## Usage
-1. **Download the Script**: Save the `chrome_clean.bat` file to your local machine.
-2. **Run as Administrator**:
-   - Right-click on the `chrome_clean.bat` file.
-   - Select **Run as administrator**.
-3. **Review Listed Policies**:
-   - The script will list existing Chrome policies from the registry for your review.
-4. **Confirm Deletion**:
-   - Once confirmed, the script will proceed to delete the policies.
 
-## Warning
-- This script modifies the Windows registry, which can affect system behavior. Use with caution and ensure you have backups of important data.
-- Running this script will remove all Chrome policies, including potentially valid configurations from corporate environments.
+1. Download [`chrome_clean.bat`](chrome_clean.bat).
+2. Read the script. Its complete behavior is visible in one text file.
+3. Right-click the downloaded file and select **Run as administrator**.
+4. Review the policies displayed by the script.
+5. Type `REMOVE` to approve the cleanup, or close the window to make no changes.
+6. Restart Chrome, visit `chrome://policy`, and select **Reload policies**.
 
-## Commands Overview
-- **Registry Key Listing**: The script will list all the Chrome policies present in the registry before any deletion for your verification.
-- **Registry Key Deletion**: Chrome policies will be removed from the following locations:
-  - `HKEY_LOCAL_MACHINE\Software\Policies\Google\Chrome`
-  - `HKEY_LOCAL_MACHINE\Software\Google\Chrome`
-  - `HKEY_CURRENT_USER\Software\Policies\Google\Chrome`
-  - `HKEY_CURRENT_USER\Software\Google\Chrome`
+Registry backups are written to a uniquely named `Chrome-Clean-Backup` folder on the current user's desktop. Double-click an exported `.reg` file to restore that key if necessary.
 
-## License
-This project is open-sourced under the MIT License. Feel free to use, modify, and distribute as needed.
+## Targeted policy keys
 
-## Disclaimer
-Chrome Clean is provided as-is, without any warranty or guarantee. Use at your own risk. The author takes no responsibility for any issues caused by the use of this script.
+Chrome Clean checks the following locations:
+
+```text
+HKLM\Software\Policies\Google\Chrome
+HKLM\Software\Policies\Google\Update
+HKLM\Software\Policies\Chromium
+HKLM\Software\WOW6432Node\Policies\Google\Chrome
+HKLM\Software\WOW6432Node\Policies\Google\Update
+HKCU\Software\Policies\Google\Chrome
+HKCU\Software\Policies\Google\Update
+HKCU\Software\Policies\Chromium
+```
+
+## Troubleshooting
+
+Policies that return after cleanup are probably being supplied by Windows Group Policy, cloud management, security software, or another administrator-controlled service. Chrome Clean deliberately does not disable those systems.
+
+Windows may display a SmartScreen warning because the batch file is unsigned. Choose **More info** only after verifying that the downloaded file matches the source in this repository.
 
 ## Contributing
-If you'd like to contribute to Chrome Clean, feel free to submit a pull request on GitHub. Issues and suggestions are always welcome.
 
+Bug reports, tested improvements, and pull requests are welcome. Please describe the Windows version used, the expected behavior, the actual behavior, and any relevant console output. Remove private information from screenshots and registry exports before posting them publicly.
+
+## License and attribution
+
+Chrome Clean is free and open-source software licensed under the [GNU General Public License v3.0](LICENSE).
+
+The project was inspired by Stefan Van Damme's Chrome Policy Remover for Windows. Chrome and Chromium are trademarks of their respective owners. This project is independent and is not endorsed by or affiliated with Google.
+
+## Disclaimer
+
+This software is provided without warranty. Review the source, maintain current backups, and use it only on systems you own or are authorized to administer.
