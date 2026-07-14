@@ -1,77 +1,121 @@
-:: Chrome Cleaner version 0.8 - November 29, 2024
-:: Dr. Cary Woods
-:: hcwoods.com 
-::
-:: This program was based on Stefan Vd's Chrome Policy Remover for Windows
-:: version 1.0 - 21 May 2022
-
 @echo off
-REM Chrome Policy Remover for Windows
-REM Enhanced Version
+setlocal EnableExtensions
 
-REM Check if script is run as administrator
-openfiles >nul 2>&1 || (
-    echo This script must be run as administrator.
+rem Chrome Clean 1.0.0
+rem Copyright (C) 2024-2026 Dr. Cary Woods
+rem Licensed under GPL-3.0-only. See LICENSE.
+rem Inspired by Stefan Van Damme's Chrome Policy Remover for Windows.
+
+fltmc >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: Chrome Clean must be run as an administrator.
+    echo Right-click chrome_clean.bat and select "Run as administrator."
     pause
-    exit /b
+    exit /b 1
 )
 
-REM Close Google Chrome
+echo.
+echo Chrome Clean 1.0.0
+echo ==================
+echo.
+echo This tool removes Chrome and Chromium policy registry keys.
+echo It does not remove Windows Group Policy folders or Chrome user data.
+echo.
+echo Policy keys currently present:
+echo.
+
+set "FOUND=0"
+call :show "HKLM\Software\Policies\Google\Chrome"
+call :show "HKLM\Software\Policies\Google\Update"
+call :show "HKLM\Software\Policies\Chromium"
+call :show "HKLM\Software\WOW6432Node\Policies\Google\Chrome"
+call :show "HKLM\Software\WOW6432Node\Policies\Google\Update"
+call :show "HKCU\Software\Policies\Google\Chrome"
+call :show "HKCU\Software\Policies\Google\Update"
+call :show "HKCU\Software\Policies\Chromium"
+
+if "%FOUND%"=="0" (
+    echo No targeted Chrome or Chromium policy keys were found.
+    pause
+    exit /b 0
+)
+
+echo.
+echo WARNING: Legitimate policies installed by an employer, school, or
+echo administrator will also be removed. Managed policies may return.
+echo.
+set /p "CONFIRM=Type REMOVE to continue: "
+if /I not "%CONFIRM%"=="REMOVE" (
+    echo Cancelled. No changes were made.
+    pause
+    exit /b 0
+)
+
+set "BACKUP=%USERPROFILE%\Desktop\Chrome-Clean-Backup-%RANDOM%"
+mkdir "%BACKUP%" >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: Could not create backup folder "%BACKUP%".
+    pause
+    exit /b 1
+)
+
+echo.
 echo Closing Google Chrome...
-taskkill /F /IM chrome.exe /T > nul
+taskkill /F /IM chrome.exe /T >nul 2>&1
+
+set "FAILED=0"
+call :backup_and_delete "HKLM\Software\Policies\Google\Chrome" "hklm-google-chrome.reg"
+call :backup_and_delete "HKLM\Software\Policies\Google\Update" "hklm-google-update.reg"
+call :backup_and_delete "HKLM\Software\Policies\Chromium" "hklm-chromium.reg"
+call :backup_and_delete "HKLM\Software\WOW6432Node\Policies\Google\Chrome" "hklm-wow-google-chrome.reg"
+call :backup_and_delete "HKLM\Software\WOW6432Node\Policies\Google\Update" "hklm-wow-google-update.reg"
+call :backup_and_delete "HKCU\Software\Policies\Google\Chrome" "hkcu-google-chrome.reg"
+call :backup_and_delete "HKCU\Software\Policies\Google\Update" "hkcu-google-update.reg"
+call :backup_and_delete "HKCU\Software\Policies\Chromium" "hkcu-chromium.reg"
+
 echo.
-
-REM Delete Group Policy folders if they exist
-IF EXIST "%WINDIR%\System32\GroupPolicy" (
-    echo Deleting GroupPolicy folder...
-    RD /S /Q "%WINDIR%\System32\GroupPolicy" || goto error
+if "%FAILED%"=="0" (
+    echo Chrome and Chromium policy cleanup completed successfully.
+    echo Registry backups are stored at:
+    echo %BACKUP%
     echo.
+    echo Restart Chrome, then visit chrome://policy and select Reload policies.
+    pause
+    exit /b 0
 )
 
-IF EXIST "%WINDIR%\System32\GroupPolicyUsers" (
-    echo Deleting GroupPolicyUsers folder...
-    RD /S /Q "%WINDIR%\System32\GroupPolicyUsers" || goto error
-    echo.
-)
-
-REM Delete Google Policy folders in Program Files
-IF EXIST "%ProgramFiles(x86)%\Google\Policies" (
-    echo Deleting Google Policies folder (x86)...
-    RD /S /Q "%ProgramFiles(x86)%\Google\Policies" || goto error
-    echo.
-)
-
-IF EXIST "%ProgramFiles%\Google\Policies" (
-    echo Deleting Google Policies folder...
-    RD /S /Q "%ProgramFiles%\Google\Policies" || goto error
-    echo.
-)
-
-REM Force Group Policy Update
-echo Updating Group Policy...
-gpupdate /force
-echo.
-
-REM Delete Chrome policies from the registry
-echo Deleting policies from Windows registries...
-reg delete HKEY_LOCAL_MACHINE\Software\Policies\Google\Chrome /f
-reg delete HKEY_LOCAL_MACHINE\Software\Policies\Google\Update /f
-reg delete HKEY_LOCAL_MACHINE\Software\Policies\Chromium /f
-reg delete HKEY_LOCAL_MACHINE\Software\Google\Chrome /f
-reg delete HKEY_LOCAL_MACHINE\Software\WOW6432Node\Google\Enrollment /f
-reg delete HKEY_CURRENT_USER\Software\Policies\Google\Chrome /f
-reg delete HKEY_CURRENT_USER\Software\Policies\Chromium /f
-reg delete HKEY_CURRENT_USER\Software\Google\Chrome /f
-reg delete "HKEY_LOCAL_MACHINE\Software\WOW6432Node\Google\Update\ClientState\{430FD4D0-B729-4F61-AA34-91526481799D}" /v "CloudManagementEnrollmentToken" /f
-
-REM Confirm cleanup
-echo Chrome policies deleted successfully.
+echo Cleanup completed with one or more errors.
+echo Review the messages above. Backups are stored at:
+echo %BACKUP%
 pause
-exit
+exit /b 1
 
-:error
-echo.
-echo An unexpected error has occurred. Have you opened the program as an administrator (right-click, run as administrator)?
-echo.
-pause
-exit
+:show
+reg query "%~1" >nul 2>&1
+if not errorlevel 1 (
+    set "FOUND=1"
+    echo [%~1]
+    reg query "%~1"
+    echo.
+)
+exit /b 0
+
+:backup_and_delete
+reg query "%~1" >nul 2>&1
+if errorlevel 1 exit /b 0
+
+echo Backing up %~1...
+reg export "%~1" "%BACKUP%\%~2" /y >nul
+if errorlevel 1 (
+    echo ERROR: Backup failed for %~1. This key was not deleted.
+    set "FAILED=1"
+    exit /b 0
+)
+
+echo Removing %~1...
+reg delete "%~1" /f >nul
+if errorlevel 1 (
+    echo ERROR: Could not remove %~1.
+    set "FAILED=1"
+)
+exit /b 0
